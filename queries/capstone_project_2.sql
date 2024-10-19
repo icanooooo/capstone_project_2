@@ -1,150 +1,123 @@
 -- 1. Berapa banyak transaksi dalam table order
-select count(id) from orders o ;
+SELECT COUNT(id) FROM orders o ;
 
 -- 2. Jumlah order dari seluruh transaksi table order
-select sum(total) from orders o ;
+SELECT SUM(total) FROM orders o ;
 
 -- 3. Jumlah produk yang paling sering memberikan diskon
-with joined_orders_products as (
-select
-	p."id" as product_id,
-	p."title" as product_title,
-	o."id" as orders_id,
-	o."user_id" as user_id,
-	o."discount" as discount,
-	o."total" as Total
-from products p 
-left join orders o 
-on p."id" = o."product_id"
+WITH discount_count AS (
+SELECT
+	p."title" AS product_title,
+	count(o."discount") AS discount_count
+FROM products p
+LEFT JOIN orders o
+ON p."id" = o."product_id"
+GROUP BY "product_title"
+ORDER BY "discount_count" DESC
+LIMIT 10
 )
 
-select
-	"product_title",
-	count("discount") as discount_count
-from joined_orders_products
-group by "product_title"
-order by "discount_count" desc
-limit 10;
+SELECT * FROM discount_count;
 
 -- 4
-with joined_orders_products as (
-select
-	p."id" as product_id,
-	p."title" as product_title,
+WITH sum_total_category AS (
+SELECT
 	p."category",
-	o."id" as orders_id,
-	o."user_id" as user_id,
-	o."discount" as discount,
-	o."total" as total
-from products p 
-left join orders o 
-on p."id" = o."product_id"
+	sum(o."total") AS sum_total
+FROM products p
+LEFT JOIN orders o
+ON p."id" = o."product_id"
+GROUP BY "category"
+ORDER BY "sum_total" DESC
 )
 
-select
-	"category",
-	sum("total") as sum_total
-from joined_orders_products
-group by "category"
-order by "sum_total" desc;
+SELECT * from sum_total_category;
 
 --5 
-with joined_orders_products as (
-select
-	p."id" as product_id,
-	p."title" as product_title,
-	o."id" as orders_id,
-	o."user_id" as user_id,
+WITH product_best_rating AS (
+SELECT
+	p."title" AS product_title,
 	p."rating",
-	o."discount" as discount,
-	o."total" as Total
-from products p 
-left join orders o 
-on p."id" = o."product_id"
+	sum(o."total") AS sum_total
+FROM products p
+LEFT JOIN orders o
+ON p."id" = o."product_id"
+WHERE rating >= 4
+GROUP BY 1, 2
+ORDER BY 3 DESC
 )
 
-select
-	product_title,
-	rating,
-	sum(total) as sum_total
-from joined_orders_products
-where rating >= 4
-group by 1, 2
-order by 3 desc
-;
+SELECT * FROM product_best_rating;
 
 --6 
-with joined_reviews_orders as (
-select 
-	r."id" as review_id,
+WITH doohickey_bad_reviews AS (
+SELECT
 	r."created_at",
-	r."product_id",
-	p."title",
 	p."category",
 	r."rating",
 	r."body"
-from reviews r 
-inner join products p
-on r."product_id" = p."id"
+FROM reviews r
+INNER JOIN products p
+ON r."product_id" = p."id"
+WHERE "category" = 'Doohickey' AND r."rating" <= 3
+ORDER BY "created_at" DESC
 )
 
-select
-	*
-from joined_reviews_orders
-where "category" = 'Doohickey' and rating <= 3
-order by "created_at" desc;
+SELECT * FROM doohickey_bad_reviews;
 
 --7 
-select
+SELECT
 	distinct("source"),
-	count("source")
-from users u
-group by "source";
+	COUNT("source")
+FROM users u
+GROUP BY "source";
 
 --8
-select count(id) as "total_users_gmail" from users u where email like '%gmail.com';
+SELECT COUNT(id) AS "total_users_gmail"
+FROM users u
+WHERE email like '%gmail.com';
 
 --9
-select
+SELECT
 	id,
 	title, 
 	price, 
 	created_at
-from products p 
+FROM products p 
 where price between 30 and 50
-order by created_at desc;
+ORDER BY created_at DESC;
 
 --10
-create view users_filtered as
-select
+CREATE VIEW users_younger AS
+SELECT
 	name,
 	email,
 	address,
 	birth_date
-from users
-where birth_date > '1997';
-	
-select * from users_filtered
-order by birth_date desc;
+FROM users
+WHERE birth_date > '1997'
+ORDER BY birth_date;
+
+SELECT * FROM users_younger;
 
 --11 coba lagi
-with counted_title as(
-select
+with counted_title AS(
+SELECT
 	id,
 	created_at,
 	title,
-	row_number() over(partition by title) as "title_row_num",
-	count(*) over (partition by title) as number_of_titles,
 	category,
-	vendor
-from products p
+	vendor,
+	ROW_NUMBER() OVER(PARTITION BY TITLE) AS "title_row_num",
+	COUNT(*) OVER(PARTITION BY title) AS number_of_titles
+FROM products p
 ),
-multiple_title as (
-select
+multiple_title AS (
+SELECT
 	*
-from counted_title
+FROM counted_title
 where number_of_titles > 1
 )
 
-select * from multiple_title;
+SELECT * FROM multiple_title;
 
